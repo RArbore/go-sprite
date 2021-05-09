@@ -1,21 +1,22 @@
 package main
 
 import (
-	//"os"
-	"fmt"
+	"os"
+	//"fmt"
 	//"strings"
 	"runtime"
-	//"image/font"
+	"io/ioutil"
 	"image/color"
+	"golang.org/x/image/font"
 	"github.com/faiface/pixel"
-	//"github.com/faiface/pixel/text"
+	"github.com/faiface/pixel/text"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
-	//"github.com/golang/freetype/truetype"
+	"github.com/golang/freetype/truetype"
 )
 
 const (
-	BOTTOM_BAR_HEIGHT = 32.0
+	BOTTOM_BAR_HEIGHT = 24.0
 )
 
 type Mode uint
@@ -35,19 +36,49 @@ var (
 	y    float32 = 0.0
 	zoom float32 = 1.0
 
-	path string
+	command string
 )
 
-func handleInput(win *pixelgl.Window) {
-	if win.Pressed(pixelgl.KeyEscape) {
-		mode = Drawing
+func loadTTF(command string, size float64) (font.Face, error) {
+	file, err := os.Open(command)
+	if err != nil {
+		return nil, err
 	}
-	if win.Typed() == ":" {
-		mode = Command
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
 	}
+
+	font, err := truetype.Parse(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return truetype.NewFace(font, &truetype.Options{
+		Size:              size,
+		GlyphCacheEntries: 1,
+	}), nil
 }
 
-func render(win *pixelgl.Window) {
+func handleInput(win *pixelgl.Window) {
+	if mode == Drawing {
+		if win.Typed() == ":" {
+			mode = Command
+		}
+	} else if mode == Command {
+		if win.Pressed(pixelgl.KeyEscape) {
+			mode = Drawing
+			command = ""
+		} else {
+			command += win.Typed()
+		}
+	}
+
+}
+
+func render(win *pixelgl.Window, txt *text.Text) {
 	win.Clear(color.RGBA{32, 35, 40, 255})
 
 	imd := imdraw.New(nil)
@@ -62,6 +93,20 @@ func render(win *pixelgl.Window) {
 	imd.Rectangle(0)
 
 	imd.Draw(win)
+
+	txt.Clear()
+
+	if mode == Command {
+		txt.Color = color.RGBA{44, 151, 244, 255}
+		txt.WriteString(":")
+
+		txt.Color = color.RGBA{156, 160, 164, 255}
+		txt.WriteString(command)
+	}
+
+	txt.Draw(win, pixel.IM.Moved(pixel.V(6, 4)))
+
+	win.Update()
 }
 
 func run() {
@@ -79,15 +124,21 @@ func run() {
 		panic(err)
 	}
 
+	face, err := loadTTF("DejaVuSansMono.ttf", 16)
+	if err != nil {
+		panic(err)
+	}
+
+	atlas := text.NewAtlas(face, text.ASCII)
+	txt := text.New(pixel.V(0, 0), atlas)
+
 	for !win.Closed() {
 		bounds := win.Bounds()
 		window_w = int32(bounds.Max.X - bounds.Min.X)
 		window_h = int32(bounds.Max.Y - bounds.Min.Y)
 
 		handleInput(win)
-		render(win)
-
-		win.Update()
+		render(win, txt)
 	}
 }
 

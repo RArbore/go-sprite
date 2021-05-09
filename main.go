@@ -2,10 +2,16 @@ package main
 
 import (
 	//"os"
-	//"fmt"
+	"fmt"
 	//"strings"
-	"github.com/veandco/go-sdl2/sdl"
 	"runtime"
+	//"image/font"
+	"image/color"
+	"github.com/faiface/pixel"
+	//"github.com/faiface/pixel/text"
+	"github.com/faiface/pixel/imdraw"
+	"github.com/faiface/pixel/pixelgl"
+	//"github.com/golang/freetype/truetype"
 )
 
 const (
@@ -32,60 +38,59 @@ var (
 	path string
 )
 
-func render(r *sdl.Renderer) {
-	r.SetDrawColor(32, 35, 40, 255)
-	r.Clear()
-	r.SetDrawColor(14, 15, 17, 255)
-	r.FillRect(&sdl.Rect{0, window_h - BOTTOM_BAR_HEIGHT, window_w, BOTTOM_BAR_HEIGHT})
-	r.SetDrawColor(7, 7, 8, 255)
-	r.FillRect(&sdl.Rect{0, window_h - BOTTOM_BAR_HEIGHT, window_w, 2})
-	r.Present()
+func handleInput(win *pixelgl.Window) {
+	if win.Pressed(pixelgl.KeyEscape) {
+		mode = Drawing
+	}
+	if win.Typed() == ":" {
+		mode = Command
+	}
+}
+
+func render(win *pixelgl.Window) {
+	win.Clear(color.RGBA{32, 35, 40, 255})
+
+	imd := imdraw.New(nil)
+	imd.EndShape = imdraw.SharpEndShape
+
+	imd.Color = color.RGBA{14, 15, 17, 255}
+	imd.Push(pixel.V(0, 0), pixel.V(float64(window_w), BOTTOM_BAR_HEIGHT))
+	imd.Rectangle(0)
+
+	imd.Color = color.RGBA{7, 7, 8, 255}
+	imd.Push(pixel.V(0, BOTTOM_BAR_HEIGHT - 2), pixel.V(float64(window_w), BOTTOM_BAR_HEIGHT))
+	imd.Rectangle(0)
+
+	imd.Draw(win)
+}
+
+func run() {
+	runtime.LockOSThread()
+
+	cfg := pixelgl.WindowConfig {
+		Title: "Go-Sprite",
+		Bounds: pixel.R(0, 0, 800, 600),
+		VSync: true,
+		Resizable: true,
+	}
+
+	win, err := pixelgl.NewWindow(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	for !win.Closed() {
+		bounds := win.Bounds()
+		window_w = int32(bounds.Max.X - bounds.Min.X)
+		window_h = int32(bounds.Max.Y - bounds.Min.Y)
+
+		handleInput(win)
+		render(win)
+
+		win.Update()
+	}
 }
 
 func main() {
-	runtime.LockOSThread()
-
-	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
-		panic(err)
-	}
-	defer sdl.Quit()
-
-	window, err := sdl.CreateWindow("Go-Sprite", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		800, 600, sdl.WINDOW_SHOWN)
-	if err != nil {
-		panic(err)
-	}
-	defer window.Destroy()
-	window.SetResizable(true)
-
-	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
-	if err != nil {
-		panic(err)
-	}
-	defer renderer.Destroy()
-
-	running := true
-	for running {
-		window_w, window_h = window.GetSize()
-
-		render(renderer)
-
-		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch t := event.(type) {
-			case *sdl.QuitEvent:
-				running = false
-				break
-			case *sdl.KeyboardEvent:
-				keyCode := t.Keysym.Sym
-				switch keyCode {
-				case 27:
-					mode = Drawing
-				}
-			case *sdl.TextInputEvent:
-				if t.GetText() == ":" {
-					mode = Command
-				}
-			}
-		}
-	}
+	pixelgl.Run(run)
 }

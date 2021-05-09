@@ -62,6 +62,10 @@ func loadTTF(command string, size float64) (font.Face, error) {
 	}), nil
 }
 
+func executeCommand() {
+
+}
+
 func handleInput(win *pixelgl.Window) {
 	if mode == Drawing {
 		if win.Typed() == ":" {
@@ -71,11 +75,16 @@ func handleInput(win *pixelgl.Window) {
 		if win.Pressed(pixelgl.KeyEscape) {
 			mode = Drawing
 			command = ""
+		} else if win.Pressed(pixelgl.KeyEnter){
+			executeCommand()
+			mode = Drawing
+			command = ""
+		} else if (win.JustPressed(pixelgl.KeyBackspace) || win.Repeated(pixelgl.KeyBackspace)) && len(command) > 0 {
+			command = command[:len(command)-1]
 		} else {
 			command += win.Typed()
 		}
 	}
-
 }
 
 func render(win *pixelgl.Window, txt *text.Text) {
@@ -92,8 +101,6 @@ func render(win *pixelgl.Window, txt *text.Text) {
 	imd.Push(pixel.V(0, BOTTOM_BAR_HEIGHT - 2), pixel.V(float64(window_w), BOTTOM_BAR_HEIGHT))
 	imd.Rectangle(0)
 
-	imd.Draw(win)
-
 	txt.Clear()
 
 	if mode == Command {
@@ -102,8 +109,13 @@ func render(win *pixelgl.Window, txt *text.Text) {
 
 		txt.Color = color.RGBA{156, 160, 164, 255}
 		txt.WriteString(command)
+
+		imd.Color = color.RGBA{44, 151, 244, 255}
+		imd.Push(pixel.V(txt.Bounds().Max.X + 8, txt.Bounds().Min.Y + 8), pixel.V(txt.Bounds().Max.X + 10, txt.Bounds().Max.Y + 4))
+		imd.Rectangle(0)
 	}
 
+	imd.Draw(win)
 	txt.Draw(win, pixel.IM.Moved(pixel.V(6, 4)))
 
 	win.Update()

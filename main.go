@@ -32,6 +32,8 @@ var (
         -0.5, -0.5, 0, // left
         0.5, -0.5, 0, // right
     }
+	window_w int
+	window_h int
 )
 
 func compileShader(source string, shaderType uint32) (uint32, error) {
@@ -73,6 +75,13 @@ func assembleVAO(mesh []float32) uint32 {
     return vao
 }
 
+func resize(win *glfw.Window, w int, h int) {
+	fmt.Println(w, h)
+	gl.Viewport(0, 0, int32(w), int32(h))
+	window_w = w
+	window_h = h
+}
+
 func render(vao uint32, gl_prog uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(gl_prog)
@@ -97,6 +106,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("could not create opengl renderer: %v", err))
 	}
+	win.SetSizeCallback(resize)
 
 	win.MakeContextCurrent()
 	if err := gl.Init(); err != nil {

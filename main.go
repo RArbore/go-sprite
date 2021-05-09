@@ -1,11 +1,14 @@
 package main
 
 import (
+	"os"
 	"fmt"
+	"image"
 	"strings"
 	"runtime"
 	"io/ioutil"
 	"image/color"
+	_ "image/png"
 	"golang.org/x/image/font"
 	"github.com/faiface/pixel"
 	"github.com/flopp/go-findfont"
@@ -38,6 +41,9 @@ var (
 
 	command string
 	notif string
+
+	loaded pixel.Picture
+	sprite *pixel.Sprite
 )
 
 func loadTTF(command string, size float64) (font.Face, error) {
@@ -62,6 +68,19 @@ func loadTTF(command string, size float64) (font.Face, error) {
 	}), nil
 }
 
+func loadPicture(path string) (pixel.Picture, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return nil, err
+	}
+	return pixel.PictureDataFromImage(img), nil
+}
+
 func executeCommand() {
 	tokens := strings.Split(command, " ")
 	switch tokens[0] {
@@ -70,6 +89,12 @@ func executeCommand() {
 			notif = "Provide one file path for opening only."
 			return
 		}
+		pic, err := loadPicture(tokens[1])
+		if err != nil {
+			panic(err)
+		}
+		loaded = pic
+		sprite = pixel.NewSprite(pic, pic.Bounds())
 	}
 }
 
@@ -105,6 +130,10 @@ func render(win *pixelgl.Window, txt *text.Text) {
 
 	imd := imdraw.New(nil)
 	imd.EndShape = imdraw.SharpEndShape
+
+	if (sprite != nil) {
+		sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+	}
 
 	imd.Color = color.RGBA{14, 15, 17, 255}
 	imd.Push(pixel.V(0, 0), pixel.V(float64(window_w), BOTTOM_BAR_HEIGHT))

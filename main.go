@@ -11,9 +11,9 @@ import (
 const (
 	vertexShaderSource = `
 		#version 410
-		in vec3 vp;
+		in vec2 vp;
 		void main() {
-			gl_Position = vec4(vp, 1.0);
+			gl_Position = vec4(vp, 1.0, 1.0);
 		}
 	` + "\x00"
 
@@ -24,14 +24,11 @@ const (
 			frag_colour = vec4(1, 1, 1, 1);
 		}
 	` + "\x00"
+	BOTTOM_BAR_HEIGHT = 32.0
 )
 
 var (
-    triangle = []float32{
-        0, 0.5, 0, // top
-        -0.5, -0.5, 0, // left
-        0.5, -0.5, 0, // right
-    }
+    mesh []float32
 	window_w int
 	window_h int
 )
@@ -59,18 +56,17 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
     return shader, nil
 }
 
-func assembleVAO(mesh []float32) uint32 {
+func assembleVAO() uint32 {
 	var vbo uint32
 	gl.GenBuffers(1, &vbo)
     gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-    gl.BufferData(gl.ARRAY_BUFFER, 4*len(mesh), gl.Ptr(mesh), gl.STATIC_DRAW)
 
 	var vao uint32
     gl.GenVertexArrays(1, &vao)
     gl.BindVertexArray(vao)
     gl.EnableVertexAttribArray(0)
     gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-    gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
+    gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, nil)
 
     return vao
 }
@@ -82,12 +78,29 @@ func resize(win *glfw.Window, w int, h int) {
 	window_h = h
 }
 
-func render(vao uint32, gl_prog uint32) {
+func posToGL(x float32, y float32) (float32, float32) {
+	return x/float32(window_w) * 2 - 1, y/float32(window_h) * 2 - 1
+}
+
+func meshAddRect(x float32, y float32, w float32, h float32) {
+	gx, gy := posToGL(x, y)
+	gw, gh := posToGL(w, h)
+	gw += 1
+	gh += 1
+	mesh = append(mesh, gx, gy, gx + gw, gy, gx, gy + gh, gx + gw, gy, gx, gy + gh, gx + gw, gy + gh)
+}
+
+func assembleMesh() {
+	mesh = nil
+	meshAddRect(0, 0, float32(window_w), BOTTOM_BAR_HEIGHT)
+}
+
+func render(vao uint32, gl_prog uint32, mesh []float32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(gl_prog)
 
-	gl.BindVertexArray(vao)
-    gl.DrawArrays(gl.TRIANGLES, 0, int32(len(triangle) / 3))
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(mesh), gl.Ptr(mesh), gl.STREAM_DRAW)
+    gl.DrawArrays(gl.TRIANGLES, 0, int32(len(mesh) / 2))
 }
 
 func main() {
@@ -129,10 +142,12 @@ func main() {
 
 	gl.ClearColor(35/256.0, 39/256.0, 46/256.0, 1.0)
 
-	vao := assembleVAO(triangle)
+	vao := assembleVAO()
+	gl.BindVertexArray(vao)
 
 	for !win.ShouldClose() {
-		render(vao, gl_prog)
+		assembleMesh()
+		render(vao, gl_prog, mesh)
 		win.SwapBuffers()
 		glfw.PollEvents()
 	}

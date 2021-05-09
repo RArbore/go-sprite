@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"runtime"
 	"strings"
@@ -111,7 +112,8 @@ func meshAddRect(x float32, y float32, w float32, h float32, r float32, g float3
 
 func assembleMesh() {
 	mesh = nil
-	meshAddRect(0, 0, float32(window_w), BOTTOM_BAR_HEIGHT, 28 / 256.0, 31 / 256.0, 36 / 256.0)
+	meshAddRect(0, 0, float32(window_w), BOTTOM_BAR_HEIGHT - 1, 28 / 256.0, 31 / 256.0, 36 / 256.0)
+	meshAddRect(0, BOTTOM_BAR_HEIGHT - 1, float32(window_w), 1, 14 / 256.0, 15 / 256.0, 17 / 256.0)
 }
 
 func render(vao uint32, gl_prog uint32, mesh []float32) {
@@ -120,6 +122,14 @@ func render(vao uint32, gl_prog uint32, mesh []float32) {
 
 	gl.BufferData(gl.ARRAY_BUFFER, 4*len(mesh), gl.Ptr(mesh), gl.STREAM_DRAW)
     gl.DrawArrays(gl.TRIANGLES, 0, int32(len(mesh) / 5))
+}
+
+func handle_input(win *glfw.Window) {
+	glfw.PollEvents()
+
+	if (win.GetKey(glfw.KeyEscape) == glfw.Press) {
+		os.Exit(0)
+	}
 }
 
 func main() {
@@ -165,9 +175,9 @@ func main() {
 	gl.BindVertexArray(vao)
 
 	for !win.ShouldClose() {
+		handle_input(win)
 		assembleMesh()
 		render(vao, gl_prog, mesh)
 		win.SwapBuffers()
-		glfw.PollEvents()
 	}
 }

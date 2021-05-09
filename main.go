@@ -11,17 +11,27 @@ import (
 const (
 	vertexShaderSource = `
 		#version 410
+
 		in vec2 vp;
+		in vec3 color;
+
+		out vec3 out_color;
+
 		void main() {
+			out_color = color;
 			gl_Position = vec4(vp, 1.0, 1.0);
 		}
 	` + "\x00"
 
 	fragmentShaderSource = `
 		#version 410
+
+		in vec3 out_color;
+
 		out vec4 frag_colour;
+
 		void main() {
-			frag_colour = vec4(1, 1, 1, 1);
+			frag_colour = vec4(out_color, 1.0);
 		}
 	` + "\x00"
 	BOTTOM_BAR_HEIGHT = 32.0
@@ -31,6 +41,7 @@ var (
     mesh []float32
 	window_w int
 	window_h int
+	COLOR_VAO_OFFSET = 2 * 4
 )
 
 func compileShader(source string, shaderType uint32) (uint32, error) {
@@ -64,9 +75,12 @@ func assembleVAO() uint32 {
 	var vao uint32
     gl.GenVertexArrays(1, &vao)
     gl.BindVertexArray(vao)
-    gl.EnableVertexAttribArray(0)
-    gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-    gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, nil)
+
+	gl.EnableVertexAttribArray(0)
+    gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 5 * 4, gl.PtrOffset(0 * 4))
+
+	gl.EnableVertexAttribArray(1)
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 5 * 4, gl.PtrOffset(2 * 4))
 
     return vao
 }
@@ -82,17 +96,22 @@ func posToGL(x float32, y float32) (float32, float32) {
 	return x/float32(window_w) * 2 - 1, y/float32(window_h) * 2 - 1
 }
 
-func meshAddRect(x float32, y float32, w float32, h float32) {
+func meshAddRect(x float32, y float32, w float32, h float32, r float32, g float32, b float32) {
 	gx, gy := posToGL(x, y)
 	gw, gh := posToGL(w, h)
 	gw += 1
 	gh += 1
-	mesh = append(mesh, gx, gy, gx + gw, gy, gx, gy + gh, gx + gw, gy, gx, gy + gh, gx + gw, gy + gh)
+	mesh = append(mesh, gx, gy, r, g, b)
+	mesh = append(mesh, gx + gw, gy, r, g, b)
+	mesh = append(mesh, gx, gy + gh, r, g, b)
+	mesh = append(mesh, gx + gw, gy, r, g, b)
+	mesh = append(mesh, gx, gy + gh, r, g, b)
+	mesh = append(mesh, gx + gw, gy + gh, r, g, b)
 }
 
 func assembleMesh() {
 	mesh = nil
-	meshAddRect(0, 0, float32(window_w), BOTTOM_BAR_HEIGHT)
+	meshAddRect(0, 0, float32(window_w), BOTTOM_BAR_HEIGHT, 28 / 256.0, 31 / 256.0, 36 / 256.0)
 }
 
 func render(vao uint32, gl_prog uint32, mesh []float32) {
@@ -100,7 +119,7 @@ func render(vao uint32, gl_prog uint32, mesh []float32) {
 	gl.UseProgram(gl_prog)
 
 	gl.BufferData(gl.ARRAY_BUFFER, 4*len(mesh), gl.Ptr(mesh), gl.STREAM_DRAW)
-    gl.DrawArrays(gl.TRIANGLES, 0, int32(len(mesh) / 2))
+    gl.DrawArrays(gl.TRIANGLES, 0, int32(len(mesh) / 5))
 }
 
 func main() {

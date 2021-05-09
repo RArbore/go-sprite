@@ -1,14 +1,14 @@
 package main
 
 import (
-	"os"
-	//"fmt"
-	//"strings"
+	"fmt"
+	"strings"
 	"runtime"
 	"io/ioutil"
 	"image/color"
 	"golang.org/x/image/font"
 	"github.com/faiface/pixel"
+	"github.com/flopp/go-findfont"
 	"github.com/faiface/pixel/text"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
@@ -37,16 +37,16 @@ var (
 	zoom float32 = 1.0
 
 	command string
+	notif string
 )
 
 func loadTTF(command string, size float64) (font.Face, error) {
-	file, err := os.Open(command)
+	fontPath, err := findfont.Find(command)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	defer file.Close()
 
-	bytes, err := ioutil.ReadAll(file)
+	bytes, err := ioutil.ReadFile(fontPath)
 	if err != nil {
 		return nil, err
 	}
@@ -63,18 +63,31 @@ func loadTTF(command string, size float64) (font.Face, error) {
 }
 
 func executeCommand() {
-
+	tokens := strings.Split(command, " ")
+	switch tokens[0] {
+	case "e":
+		if len(tokens) > 2 {
+			notif = "Provide one file path for opening only."
+			return
+		}
+	}
 }
 
 func handleInput(win *pixelgl.Window) {
 	if mode == Drawing {
 		if win.Typed() == ":" {
 			mode = Command
+			command = ""
+			notif = ""
+		}
+		if win.Pressed(pixelgl.KeyEscape) {
+			notif = ""
 		}
 	} else if mode == Command {
 		if win.Pressed(pixelgl.KeyEscape) {
 			mode = Drawing
 			command = ""
+			notif = ""
 		} else if win.Pressed(pixelgl.KeyEnter){
 			executeCommand()
 			mode = Drawing
@@ -113,6 +126,9 @@ func render(win *pixelgl.Window, txt *text.Text) {
 		imd.Color = color.RGBA{44, 151, 244, 255}
 		imd.Push(pixel.V(txt.Bounds().Max.X + 8, txt.Bounds().Min.Y + 8), pixel.V(txt.Bounds().Max.X + 10, txt.Bounds().Max.Y + 4))
 		imd.Rectangle(0)
+	} else if mode == Drawing {
+		txt.Color = color.RGBA{156, 160, 164, 255}
+		txt.WriteString(notif)
 	}
 
 	imd.Draw(win)
@@ -146,8 +162,13 @@ func run() {
 
 	for !win.Closed() {
 		bounds := win.Bounds()
-		window_w = int32(bounds.Max.X - bounds.Min.X)
-		window_h = int32(bounds.Max.Y - bounds.Min.Y)
+		n_window_w := int32(bounds.Max.X - bounds.Min.X)
+		n_window_h := int32(bounds.Max.Y - bounds.Min.Y)
+		if window_w != n_window_w || window_h != n_window_h {
+			fmt.Println(n_window_w, n_window_h)
+		}
+		window_w = n_window_w
+		window_h = n_window_h
 
 		handleInput(win)
 		render(win, txt)

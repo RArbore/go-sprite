@@ -3,8 +3,10 @@ package main
 import (
 	"os"
 	"fmt"
-	"runtime"
 	"strings"
+	"runtime"
+	"github.com/andrebq/gas"
+	"github.com/go-gl/gltext"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/gl/v4.6-core/gl"
 )
@@ -38,11 +40,26 @@ const (
 	BOTTOM_BAR_HEIGHT = 32.0
 )
 
+type Mode uint
+
+const (
+	Drawing = 0
+	Command = 1
+)
+
 var (
+	mode Mode
+
     mesh []float32
 	window_w int
 	window_h int
-	COLOR_VAO_OFFSET = 2 * 4
+
+	x float32 = 0.0
+	y float32 = 0.0
+	zoom float32 = 1.0
+
+	path string
+	font *gltext.Font
 )
 
 func compileShader(source string, shaderType uint32) (uint32, error) {
@@ -86,6 +103,12 @@ func assembleVAO() uint32 {
     return vao
 }
 
+func char_input(win *glfw.Window, in rune) {
+	if in == ':'{
+		mode = Command
+	}
+}
+
 func resize(win *glfw.Window, w int, h int) {
 	fmt.Println(w, h)
 	gl.Viewport(0, 0, int32(w), int32(h))
@@ -122,14 +145,28 @@ func render(vao uint32, gl_prog uint32, mesh []float32) {
 
 	gl.BufferData(gl.ARRAY_BUFFER, 4*len(mesh), gl.Ptr(mesh), gl.STREAM_DRAW)
     gl.DrawArrays(gl.TRIANGLES, 0, int32(len(mesh) / 5))
+
+	font.Printf(0, 0, "Hello world!")
+
 }
 
 func handle_input(win *glfw.Window) {
 	glfw.PollEvents()
 
 	if (win.GetKey(glfw.KeyEscape) == glfw.Press) {
-		os.Exit(0)
+		mode = Drawing
 	}
+}
+
+func loadFont(file string, scale int32) (*gltext.Font, error) {
+	fd, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+
+	defer fd.Close()
+
+	return gltext.LoadTruetype(fd, scale, 32, 127, gltext.LeftToRight)
 }
 
 func main() {
@@ -148,10 +185,21 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("could not create opengl renderer: %v", err))
 	}
+	win.SetCharCallback(char_input)
 	win.SetSizeCallback(resize)
 
 	win.MakeContextCurrent()
 	if err := gl.Init(); err != nil {
+		panic(err)
+	}
+
+	file, err := gas.Abs("DejaVuSansMono.ttf")
+	if err != nil {
+		panic(err)
+	}
+
+	font, err = loadFont(file, 32)
+	if err != nil {
 		panic(err)
 	}
 
@@ -169,6 +217,7 @@ func main() {
     gl.AttachShader(gl_prog, fragmentShader)
     gl.LinkProgram(gl_prog)
 
+	gl.Disable(gl.DEPTH_TEST)
 	gl.ClearColor(35/256.0, 39/256.0, 46/256.0, 1.0)
 
 	vao := assembleVAO()

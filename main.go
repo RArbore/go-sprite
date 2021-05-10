@@ -91,18 +91,17 @@ func redrawChecker(win *pixelgl.Window) {
 	checker_background = imdraw.New(nil)
 	checker_background.EndShape = imdraw.SharpEndShape
 	if (sprite != nil) {
-		checker_background.SetMatrix(pixel.IM.Moved(pixel.Vec{-x, -y}).Scaled(loaded.Bounds().Center(), zoom))
-		WC := win.Bounds().Center()
+		checker_background.SetMatrix(mat)
 		PB := loaded.Bounds()
 		i := 0
-		for cx := WC.X - (PB.Max.X - PB.Min.X) / 2; cx < PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2; cx += CHECKER_SIZE {
-			for cy := WC.Y - (PB.Max.Y - PB.Min.Y) / 2; cy < PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2; cy += CHECKER_SIZE {
+		for cx := -(PB.Max.X - PB.Min.X) / 2; cx < PB.W() - (PB.Max.X - PB.Min.X) / 2; cx += CHECKER_SIZE {
+			for cy := -(PB.Max.Y - PB.Min.Y) / 2; cy < PB.H() - (PB.Max.Y - PB.Min.Y) / 2; cy += CHECKER_SIZE {
 				if (i % 2 == 0) {
 					checker_background.Color = color.RGBA{200, 200, 200, 255}
 				} else {
 					checker_background.Color = color.RGBA{150, 150, 150, 255}
 				}
-				checker_background.Push(pixel.V(cx, PB.Min.Y + 2 * WC.Y - cy), pixel.V(math.Min(cx + CHECKER_SIZE, PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2), PB.Min.Y + 2 * WC.Y - math.Min(cy + CHECKER_SIZE, PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2)))
+				checker_background.Push(pixel.V(cx, PB.Min.Y - cy), pixel.V(math.Min(cx + CHECKER_SIZE, PB.W() - (PB.Max.X - PB.Min.X) / 2), PB.Min.Y - math.Min(cy + CHECKER_SIZE, PB.H() - (PB.Max.Y - PB.Min.Y) / 2)))
 				checker_background.Rectangle(0)
 				i++
 			}
@@ -160,18 +159,17 @@ func handleInput(win *pixelgl.Window) {
 			mppos := win.MousePreviousPosition()
 			x += (mppos.X - mcpos.X) / zoom
 			y += (mppos.Y - mcpos.Y) / zoom
-			redrawChecker(win)
 		}
 		if win.MouseScroll().Y != 0 {
 			zoom *= math.Pow(2.0, win.MouseScroll().Y)
-			redrawChecker(win)
 		}
-		mat = pixel.IM.Moved(win.Bounds().Center().Add(pixel.Vec{-x, -y})).Scaled(loaded.Bounds().Center(), zoom)
+		mat = pixel.IM.Moved(pixel.Vec{-x, -y}).Scaled(loaded.Bounds().Center(), zoom).Moved(win.Bounds().Center())
 		mpos := win.MousePosition()
 		ipos = mat.Unproject(mpos).Add(loaded.Bounds().Center())
 		ipos.X = math.Round(ipos.X-0.5)
 		ipos.Y = math.Round(ipos.Y-0.5)
-		fmt.Println(ipos)
+		redrawChecker(win)
+		fmt.Println(x, y, ipos)
 	}
 }
 
@@ -206,17 +204,17 @@ func render(win *pixelgl.Window, txt *text.Text) {
 		txt.WriteString(notif)
 	}
 
-	imd.Draw(win)
 	if (sprite != nil) {
 		checker_background.Draw(win)
-		mat = pixel.IM.Moved(win.Bounds().Center().Add(pixel.Vec{-x, -y})).Scaled(loaded.Bounds().Center(), zoom)
 		sprite.Draw(win, mat)
-		imd.Clear()
-		imd.Color = color.RGBA{255, 255, 255, 255}
-		imd.Push(mat.Project(ipos.Sub(loaded.Bounds().Center())), mat.Project(ipos.Sub(loaded.Bounds().Center()).Add(pixel.Vec{1.0, 1.0})))
-		imd.Rectangle(1)
-		imd.Draw(win)
+		mbox := imdraw.New(nil)
+		mbox.Color = color.RGBA{255, 255, 255, 255}
+		mbox.Push(mat.Project(ipos.Sub(loaded.Bounds().Center())), mat.Project(ipos.Sub(loaded.Bounds().Center()).Add(pixel.Vec{1.0, 1.0})))
+		mbox.Rectangle(1)
+		mbox.Draw(win)
 	}
+
+	imd.Draw(win)
 	txt.Draw(win, pixel.IM.Moved(pixel.V(6, 4)))
 
 	win.Update()

@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"fmt"
+	"math"
 	"image"
 	"strings"
 	"runtime"
@@ -20,6 +21,7 @@ import (
 
 const (
 	BOTTOM_BAR_HEIGHT = 24.0
+	CHECKER_SIZE = 16
 )
 
 type Mode uint
@@ -45,7 +47,7 @@ var (
 	loaded pixel.Picture
 	sprite *pixel.Sprite
 
-	background *imdraw.IMDraw
+	checker_background *imdraw.IMDraw
 )
 
 func loadTTF(command string, size float64) (font.Face, error) {
@@ -97,22 +99,22 @@ func executeCommand(win *pixelgl.Window) {
 		}
 		loaded = pic
 		sprite = pixel.NewSprite(pic, pic.Bounds())
-		background = imdraw.New(nil)
-		background.EndShape = imdraw.SharpEndShape
+		checker_background = imdraw.New(nil)
+		checker_background.EndShape = imdraw.SharpEndShape
 		if (sprite != nil) {
 			WC := win.Bounds().Center()
 			PB := loaded.Bounds()
-			for x := WC.X - (PB.Max.X - PB.Min.X) / 2; x < PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2; x++ {
-				for y := WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y < PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y++ {
-					rx := int32(x - (WC.X - (PB.Max.X - PB.Min.X) / 2))
-					ry := int32(y - (WC.Y - (PB.Max.Y - PB.Min.Y) / 2))
-					if (rx % 32 < 16  || ry % 32 < 16) && !(rx % 32 < 16  && ry % 32 < 16) {
-						background.Color = color.RGBA{200, 200, 200, 255}
+			i := 0
+			for x := WC.X - (PB.Max.X - PB.Min.X) / 2; x < PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2; x += CHECKER_SIZE {
+				for y := WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y < PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y += CHECKER_SIZE {
+					if (i % 2 == 0) {
+						checker_background.Color = color.RGBA{200, 200, 200, 255}
 					} else {
-						background.Color = color.RGBA{150, 150, 150, 255}
+						checker_background.Color = color.RGBA{150, 150, 150, 255}
 					}
-					background.Push(pixel.V(x, y), pixel.V(x + 1,  y + 1))
-					background.Rectangle(0)
+					checker_background.Push(pixel.V(x, y), pixel.V(math.Min(x + CHECKER_SIZE, PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2),  math.Min(y + CHECKER_SIZE, PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2)))
+					checker_background.Rectangle(0)
+					i++
 				}
 			}
 		}
@@ -181,7 +183,7 @@ func render(win *pixelgl.Window, txt *text.Text) {
 
 	imd.Draw(win)
 	if (sprite != nil) {
-		background.Draw(win)
+		checker_background.Draw(win)
 		sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
 	}
 	txt.Draw(win, pixel.IM.Moved(pixel.V(6, 4)))

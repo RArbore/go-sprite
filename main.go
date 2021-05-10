@@ -40,6 +40,7 @@ var (
 	x    float64 = 0.0
 	y    float64 = 0.0
 	zoom float64 = 1.0
+	ipos pixel.Vec
 	mat pixel.Matrix
 
 	command string
@@ -167,7 +168,9 @@ func handleInput(win *pixelgl.Window) {
 		}
 		mat = pixel.IM.Moved(win.Bounds().Center().Add(pixel.Vec{-x, -y})).Scaled(loaded.Bounds().Center(), zoom)
 		mpos := win.MousePosition()
-		ipos := mat.Unproject(mpos).Add(loaded.Bounds().Center())
+		ipos = mat.Unproject(mpos).Add(loaded.Bounds().Center())
+		ipos.X = math.Round(ipos.X-0.5)
+		ipos.Y = math.Round(ipos.Y-0.5)
 		fmt.Println(ipos)
 	}
 }
@@ -208,6 +211,11 @@ func render(win *pixelgl.Window, txt *text.Text) {
 		checker_background.Draw(win)
 		mat = pixel.IM.Moved(win.Bounds().Center().Add(pixel.Vec{-x, -y})).Scaled(loaded.Bounds().Center(), zoom)
 		sprite.Draw(win, mat)
+		imd.Clear()
+		imd.Color = color.RGBA{255, 255, 255, 255}
+		imd.Push(mat.Project(ipos.Sub(loaded.Bounds().Center())), mat.Project(ipos.Sub(loaded.Bounds().Center()).Add(pixel.Vec{1.0, 1.0})))
+		imd.Rectangle(1)
+		imd.Draw(win)
 	}
 	txt.Draw(win, pixel.IM.Moved(pixel.V(6, 4)))
 

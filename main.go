@@ -100,7 +100,7 @@ func redraw_checker(win *pixelgl.Window) {
 				} else {
 					checker_background.Color = color.RGBA{150, 150, 150, 255}
 				}
-				checker_background.Push(pixel.V(x, y), pixel.V(math.Min(x + CHECKER_SIZE, PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2),  math.Min(y + CHECKER_SIZE, PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2)))
+				checker_background.Push(pixel.V(x, PB.Min.Y + 2 * WC.Y - y), pixel.V(math.Min(x + CHECKER_SIZE, PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2), PB.Min.Y + 2 * WC.Y - math.Min(y + CHECKER_SIZE, PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2)))
 				checker_background.Rectangle(0)
 				i++
 			}
@@ -156,6 +156,11 @@ func handleInput(win *pixelgl.Window) {
 		} else {
 			command += win.Typed()
 		}
+	}
+	if sprite != nil && win.Pressed(pixelgl.MouseButton2) {
+		mcpos := win.MousePosition()
+		mppos := win.MousePreviousPosition()
+		move_pos(mcpos.X - mppos.X, mcpos.Y - mppos.Y, win)
 	}
 }
 

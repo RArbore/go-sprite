@@ -37,9 +37,9 @@ var (
 	window_w int32
 	window_h int32
 
-	x    float32 = 0.0
-	y    float32 = 0.0
-	zoom float32 = 1.0
+	x    float64 = 0.0
+	y    float64 = 0.0
+	zoom float64 = 1.0
 
 	command string
 	notif string
@@ -85,6 +85,29 @@ func loadPicture(path string) (pixel.Picture, error) {
 	return pixel.PictureDataFromImage(img), nil
 }
 
+func redraw_checker(win *pixelgl.Window) {
+	checker_background = imdraw.New(nil)
+	checker_background.EndShape = imdraw.SharpEndShape
+	checker_background.SetMatrix(pixel.IM.Moved(pixel.Vec{x, y}))
+	if (sprite != nil) {
+		WC := win.Bounds().Center()
+		PB := loaded.Bounds()
+		i := 0
+		for x := WC.X - (PB.Max.X - PB.Min.X) / 2; x < PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2; x += CHECKER_SIZE {
+			for y := WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y < PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y += CHECKER_SIZE {
+				if (i % 2 == 0) {
+					checker_background.Color = color.RGBA{200, 200, 200, 255}
+				} else {
+					checker_background.Color = color.RGBA{150, 150, 150, 255}
+				}
+				checker_background.Push(pixel.V(x, y), pixel.V(math.Min(x + CHECKER_SIZE, PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2),  math.Min(y + CHECKER_SIZE, PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2)))
+				checker_background.Rectangle(0)
+				i++
+			}
+		}
+	}
+}
+
 func executeCommand(win *pixelgl.Window) {
 	tokens := strings.Split(command, " ")
 	switch tokens[0] {
@@ -99,26 +122,14 @@ func executeCommand(win *pixelgl.Window) {
 		}
 		loaded = pic
 		sprite = pixel.NewSprite(pic, pic.Bounds())
-		checker_background = imdraw.New(nil)
-		checker_background.EndShape = imdraw.SharpEndShape
-		if (sprite != nil) {
-			WC := win.Bounds().Center()
-			PB := loaded.Bounds()
-			i := 0
-			for x := WC.X - (PB.Max.X - PB.Min.X) / 2; x < PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2; x += CHECKER_SIZE {
-				for y := WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y < PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y += CHECKER_SIZE {
-					if (i % 2 == 0) {
-						checker_background.Color = color.RGBA{200, 200, 200, 255}
-					} else {
-						checker_background.Color = color.RGBA{150, 150, 150, 255}
-					}
-					checker_background.Push(pixel.V(x, y), pixel.V(math.Min(x + CHECKER_SIZE, PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2),  math.Min(y + CHECKER_SIZE, PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2)))
-					checker_background.Rectangle(0)
-					i++
-				}
-			}
-		}
+		redraw_checker(win)
 	}
+}
+
+func move_pos(dx float64, dy float64, win *pixelgl.Window) {
+	x += dx
+	y += dy
+	redraw_checker(win)
 }
 
 func handleInput(win *pixelgl.Window) {
@@ -184,7 +195,7 @@ func render(win *pixelgl.Window, txt *text.Text) {
 	imd.Draw(win)
 	if (sprite != nil) {
 		checker_background.Draw(win)
-		sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+		sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center().Add(pixel.Vec{x, y})))
 	}
 	txt.Draw(win, pixel.IM.Moved(pixel.V(6, 4)))
 
@@ -220,9 +231,10 @@ func run() {
 		n_window_h := int32(bounds.Max.Y - bounds.Min.Y)
 		if window_w != n_window_w || window_h != n_window_h {
 			fmt.Println(n_window_w, n_window_h)
+			window_w = n_window_w
+			window_h = n_window_h
+			redraw_checker(win)
 		}
-		window_w = n_window_w
-		window_h = n_window_h
 
 		handleInput(win)
 		render(win, txt)

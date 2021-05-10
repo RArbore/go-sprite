@@ -44,6 +44,8 @@ var (
 
 	loaded pixel.Picture
 	sprite *pixel.Sprite
+
+	background *imdraw.IMDraw
 )
 
 func loadTTF(command string, size float64) (font.Face, error) {
@@ -81,7 +83,7 @@ func loadPicture(path string) (pixel.Picture, error) {
 	return pixel.PictureDataFromImage(img), nil
 }
 
-func executeCommand() {
+func executeCommand(win *pixelgl.Window) {
 	tokens := strings.Split(command, " ")
 	switch tokens[0] {
 	case "e":
@@ -95,6 +97,25 @@ func executeCommand() {
 		}
 		loaded = pic
 		sprite = pixel.NewSprite(pic, pic.Bounds())
+		background = imdraw.New(nil)
+		background.EndShape = imdraw.SharpEndShape
+		if (sprite != nil) {
+			WC := win.Bounds().Center()
+			PB := loaded.Bounds()
+			for x := WC.X - (PB.Max.X - PB.Min.X) / 2; x < PB.W() + WC.X - (PB.Max.X - PB.Min.X) / 2; x++ {
+				for y := WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y < PB.H() + WC.Y - (PB.Max.Y - PB.Min.Y) / 2; y++ {
+					rx := int32(x - (WC.X - (PB.Max.X - PB.Min.X) / 2))
+					ry := int32(y - (WC.Y - (PB.Max.Y - PB.Min.Y) / 2))
+					if (rx % 32 < 16  || ry % 32 < 16) && !(rx % 32 < 16  && ry % 32 < 16) {
+						background.Color = color.RGBA{200, 200, 200, 255}
+					} else {
+						background.Color = color.RGBA{150, 150, 150, 255}
+					}
+					background.Push(pixel.V(x, y), pixel.V(x + 1,  y + 1))
+					background.Rectangle(0)
+				}
+			}
+		}
 	}
 }
 
@@ -114,7 +135,7 @@ func handleInput(win *pixelgl.Window) {
 			command = ""
 			notif = ""
 		} else if win.Pressed(pixelgl.KeyEnter){
-			executeCommand()
+			executeCommand(win)
 			mode = Drawing
 			command = ""
 		} else if (win.JustPressed(pixelgl.KeyBackspace) || win.Repeated(pixelgl.KeyBackspace)) && len(command) > 0 {
@@ -131,9 +152,7 @@ func render(win *pixelgl.Window, txt *text.Text) {
 	imd := imdraw.New(nil)
 	imd.EndShape = imdraw.SharpEndShape
 
-	if (sprite != nil) {
-		sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
-	}
+
 
 	imd.Color = color.RGBA{14, 15, 17, 255}
 	imd.Push(pixel.V(0, 0), pixel.V(float64(window_w), BOTTOM_BAR_HEIGHT))
@@ -161,6 +180,10 @@ func render(win *pixelgl.Window, txt *text.Text) {
 	}
 
 	imd.Draw(win)
+	if (sprite != nil) {
+		background.Draw(win)
+		sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+	}
 	txt.Draw(win, pixel.IM.Moved(pixel.V(6, 4)))
 
 	win.Update()

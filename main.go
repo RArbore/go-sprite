@@ -40,6 +40,7 @@ var (
 	x    float64 = 0.0
 	y    float64 = 0.0
 	zoom float64 = 1.0
+	mat pixel.Matrix
 
 	command string
 	notif string
@@ -85,7 +86,7 @@ func loadPicture(path string) (pixel.Picture, error) {
 	return pixel.PictureDataFromImage(img), nil
 }
 
-func redraw_checker(win *pixelgl.Window) {
+func redrawChecker(win *pixelgl.Window) {
 	checker_background = imdraw.New(nil)
 	checker_background.EndShape = imdraw.SharpEndShape
 	if (sprite != nil) {
@@ -123,7 +124,7 @@ func executeCommand(win *pixelgl.Window) {
 		loaded = pic
 		sprite = pixel.NewSprite(pic, pic.Bounds())
 		zoom = 1.0
-		redraw_checker(win)
+		redrawChecker(win)
 	}
 }
 
@@ -158,14 +159,17 @@ func handleInput(win *pixelgl.Window) {
 			mppos := win.MousePreviousPosition()
 			x += (mppos.X - mcpos.X) / zoom
 			y += (mppos.Y - mcpos.Y) / zoom
-			redraw_checker(win)
+			redrawChecker(win)
 		}
 		if win.MouseScroll().Y != 0 {
 			zoom *= math.Pow(2.0, win.MouseScroll().Y)
-			redraw_checker(win)
+			redrawChecker(win)
 		}
+		mat = pixel.IM.Moved(win.Bounds().Center().Add(pixel.Vec{-x, -y})).Scaled(loaded.Bounds().Center(), zoom)
+		mpos := win.MousePosition()
+		ipos := mat.Unproject(mpos).Add(loaded.Bounds().Center())
+		fmt.Println(ipos)
 	}
-	fmt.Println(x, y, zoom)
 }
 
 func render(win *pixelgl.Window, txt *text.Text) {
@@ -173,8 +177,6 @@ func render(win *pixelgl.Window, txt *text.Text) {
 
 	imd := imdraw.New(nil)
 	imd.EndShape = imdraw.SharpEndShape
-
-
 
 	imd.Color = color.RGBA{14, 15, 17, 255}
 	imd.Push(pixel.V(0, 0), pixel.V(float64(window_w), BOTTOM_BAR_HEIGHT))
@@ -204,7 +206,8 @@ func render(win *pixelgl.Window, txt *text.Text) {
 	imd.Draw(win)
 	if (sprite != nil) {
 		checker_background.Draw(win)
-		sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center().Add(pixel.Vec{-x, -y})).Scaled(loaded.Bounds().Center(), zoom))
+		mat = pixel.IM.Moved(win.Bounds().Center().Add(pixel.Vec{-x, -y})).Scaled(loaded.Bounds().Center(), zoom)
+		sprite.Draw(win, mat)
 	}
 	txt.Draw(win, pixel.IM.Moved(pixel.V(6, 4)))
 
@@ -242,7 +245,7 @@ func run() {
 			fmt.Println(n_window_w, n_window_h)
 			window_w = n_window_w
 			window_h = n_window_h
-			redraw_checker(win)
+			redrawChecker(win)
 		}
 
 		handleInput(win)

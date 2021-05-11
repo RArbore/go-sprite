@@ -46,7 +46,7 @@ var (
 	command string
 	notif string
 
-	loaded pixel.Picture
+	loaded *pixel.PictureData
 	sprite *pixel.Sprite
 
 	checker_background *imdraw.IMDraw
@@ -109,6 +109,12 @@ func redrawChecker(win *pixelgl.Window) {
 	}
 }
 
+func recreateSprite() {
+	if (loaded != nil) {
+		sprite = pixel.NewSprite(loaded, loaded.Bounds())
+	}
+}
+
 func executeCommand(win *pixelgl.Window) {
 	tokens := strings.Split(command, " ")
 	switch tokens[0] {
@@ -121,7 +127,7 @@ func executeCommand(win *pixelgl.Window) {
 		if err != nil {
 			panic(err)
 		}
-		loaded = pic
+		loaded = pixel.PictureDataFromPicture(pic)
 		sprite = pixel.NewSprite(pic, pic.Bounds())
 		zoom = 1.0
 		redrawChecker(win)
@@ -154,6 +160,12 @@ func handleInput(win *pixelgl.Window) {
 		}
 	}
 	if sprite != nil {
+		if win.Pressed(pixelgl.MouseButton1) {
+			if (loaded.Bounds().Contains(ipos) && loaded.Bounds().Contains(ipos.Add(pixel.Vec{1, 1}))) {
+				loaded.Pix[int(ipos.X) + int(ipos.Y) * loaded.Stride] = color.RGBA{0, 0, 0, 255}
+				recreateSprite()
+			}
+		}
 		if win.Pressed(pixelgl.MouseButton2) {
 			mcpos := win.MousePosition()
 			mppos := win.MousePreviousPosition()

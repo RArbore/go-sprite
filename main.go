@@ -115,6 +115,18 @@ func recreateSprite() {
 	}
 }
 
+func loadImageFile(path string, win *pixelgl.Window) {
+	pic, err := loadPicture(path)
+	if err != nil {
+		panic(err)
+	}
+	loaded = pixel.PictureDataFromPicture(pic)
+	sprite = pixel.NewSprite(pic, pic.Bounds())
+	zoom = 1.0
+	mat = pixel.IM.Moved(pixel.Vec{-x, -y}).Scaled(loaded.Bounds().Center(), zoom).Moved(win.Bounds().Center())
+	redrawChecker(win)
+}
+
 func executeCommand(win *pixelgl.Window) {
 	tokens := strings.Split(command, " ")
 	switch tokens[0] {
@@ -123,14 +135,7 @@ func executeCommand(win *pixelgl.Window) {
 			notif = "Provide one file path for opening only."
 			return
 		}
-		pic, err := loadPicture(tokens[1])
-		if err != nil {
-			panic(err)
-		}
-		loaded = pixel.PictureDataFromPicture(pic)
-		sprite = pixel.NewSprite(pic, pic.Bounds())
-		zoom = 1.0
-		redrawChecker(win)
+		loadImageFile(tokens[1], win)
 	}
 }
 
@@ -166,6 +171,9 @@ func handleInput(win *pixelgl.Window) {
 				recreateSprite()
 			}
 		}
+		px := x
+		py := y
+		pzoom := zoom
 		if win.Pressed(pixelgl.MouseButton2) {
 			mcpos := win.MousePosition()
 			mppos := win.MousePreviousPosition()
@@ -175,13 +183,15 @@ func handleInput(win *pixelgl.Window) {
 		if win.MouseScroll().Y != 0 {
 			zoom *= math.Pow(2.0, win.MouseScroll().Y)
 		}
-		mat = pixel.IM.Moved(pixel.Vec{-x, -y}).Scaled(loaded.Bounds().Center(), zoom).Moved(win.Bounds().Center())
+		if x != px || y != py || zoom != pzoom {
+			mat = pixel.IM.Moved(pixel.Vec{-x, -y}).Scaled(loaded.Bounds().Center(), zoom).Moved(win.Bounds().Center())
+			redrawChecker(win)
+		}
+
 		mpos := win.MousePosition()
 		ipos = mat.Unproject(mpos).Add(loaded.Bounds().Center())
 		ipos.X = math.Round(ipos.X-0.5)
 		ipos.Y = math.Round(ipos.Y-0.5)
-		redrawChecker(win)
-		fmt.Println(x, y, ipos)
 	}
 }
 
@@ -254,6 +264,10 @@ func run() {
 
 	atlas := text.NewAtlas(face, text.ASCII)
 	txt := text.New(pixel.V(0, 0), atlas)
+
+	if len(os.Args) == 2 {
+		loadImageFile(os.Args[1], win)
+	}
 
 	for !win.Closed() {
 		bounds := win.Bounds()

@@ -1,2 +1,2 @@
 # go-sprite
-A simple pixel art editor written in Go.
+A simple pixel art viewer written in Go.
